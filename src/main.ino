@@ -8,6 +8,7 @@
 #include <AS5600.h>
 #include <ArduinoHttpClient.h>
 #include <Adafruit_SleepyDog.h>
+#include <MQTT.h>
 
 /*
     Variable Declaration
@@ -15,9 +16,16 @@
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
+const char BROKER[] = "broker.hivemq.com";
+const char TOPIC[] = "reponseCode";
+const char CLIENT_ID[] = "responseCoder135";
+const char MQTT_USERNAME[] = "";
+const char MQTT_PASSWORD[] = "";
 const char PINNUMBER[] = SECRET_PINNUMBER;
 char HOST_NAME[] = "3d.chordsrt.com";
 int HTTP_PORT = 80;
+int MQTT_PORT = 1883;
+int modem_reset = 0;
 const int interruptPin = 5;
 volatile int interruptcounter = 0;
 const float Pi = 3.14159;
@@ -35,6 +43,7 @@ GPRS gprs;
 NB nbAccess(true);
 NBScanner scannerNetworks;
 NBModem modem;
+MQTTClient mqttClient(750);
 
 /*
     Function Creation
@@ -43,6 +52,25 @@ NBModem modem;
 void cb1()
 {
   interruptcounter++;
+}
+
+void reconnect()
+{
+  while (nbAccess.isAccessAlive() == 0)
+  {
+    MODEM.begin(true);
+    MODEM.sendf("AT+COPS=0");
+    if ((nbAccess.begin(PINNUMBER) == NB_READY) &&
+        (gprs.attachGPRS() == GPRS_READY))
+    {
+      Serial.println("Connecting!");
+    }
+    else
+    {
+      Serial.println("Not connected");
+      MODEM.waitForResponse(2000);
+    }
+  }
 }
 
 /*
@@ -102,6 +130,10 @@ void setup()
 
 void loop()
 {
+
+  Watchdog.reset();
+  delay(200);
+  reconnect();
   Watchdog.reset();
 
   if (nbAccess.isAccessAlive() == 0)
@@ -125,10 +157,36 @@ void loop()
   Watchdog.reset();
   String response = client2.responseBody();
   Watchdog.reset();
+  client2.stop();
+  Watchdog.reset();
+  mqttClient.begin(BROKER, MQTT_PORT, client);
+  Watchdog.reset();
+
+  while (!mqttClient.connected())
+  {
+    Serial.println("Attempting Connection to HIVEMQ BROKER...");
+
+    while (!mqttClient.connect(CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD))
+    {
+      Serial.println("Connecting...");
+      delay(5000);
+    }
+
+    Serial.println("Connected!");
+
+    mqttClient.publish("returnCode", "Station Online!");
+    // client.subscribe(inTopic);
+  }
+
+  Serial.println("Three");
+  Watchdog.reset();
+  mqttClient.publish("returnCode", String(statusCode));
+  Serial.println(mqttClient.returnCode());
+  Serial.println(mqttClient.lastError());
+  Watchdog.reset();
 
   if (statusCode != 200)
   {
-    client2.stop();
     delay(10000);
   }
 
@@ -137,10 +195,8 @@ void loop()
   Serial.print("Response: ");
   Serial.println(response);
 
-  client2.stop();
   interruptcounter = 0;
-
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < 10; i++)
   {
     Watchdog.reset();
     delay(5000);
