@@ -18,7 +18,6 @@
 
 const char BROKER[] = "broker.hivemq.com";
 const char TOPIC[] = "reponseCode";
-const char CLIENT_ID[] = "responseCoder135";
 const char MQTT_USERNAME[] = "";
 const char MQTT_PASSWORD[] = "";
 const char PINNUMBER[] = SECRET_PINNUMBER;
@@ -125,23 +124,19 @@ void setup()
                      "try a different address!"));
   }
 
+  mqttClient.setCleanSession(true);
+  mqttClient.begin(BROKER, MQTT_PORT, client);
+
   Watchdog.enable(8000);
 }
 
 void loop()
 {
-
+  mqttClient.loop();
   Watchdog.reset();
   delay(200);
   reconnect();
   Watchdog.reset();
-
-  if (nbAccess.isAccessAlive() == 0)
-  {
-    Serial.println("Disconnected");
-    delay(8500);
-  }
-
   sensors_event_t htu_humidity, htu_temp;
   htu.getEvent(&htu_humidity, &htu_temp);
   String urlRequest = "/measurements/url_create?instrument_id=92&bmp_temp=" + String(bmp.temperature) + "&bmp_pressure=" + String(bmp.pressure / 100) + "&bmp_slp=" + String(SEALEVELPRESSURE_HPA) + "&bmp_altitude=" + String(bmp.readAltitude(SEALEVELPRESSURE_HPA)) + "&bmp_humidity=-999.9" + "&htu21d_temp=" + String(htu_temp.temperature) + "&htu21d_humidity=" + String(htu_humidity.relative_humidity) + "&mcp9808=" + String(mcp.readTempC()) + "&wind_direction=" + String(as5600.readAngle() * AS5600_RAW_TO_DEGREES) + "&wind_speed=" + String(0.0188 * (interruptcounter / 2) + 0.39) + "&key=" + SECRET_KEY;
@@ -159,14 +154,14 @@ void loop()
   Watchdog.reset();
   client2.stop();
   Watchdog.reset();
-  mqttClient.begin(BROKER, MQTT_PORT, client);
-  Watchdog.reset();
+  String clientID = "MKRNBClient";
+  clientID += String(random(0xffff), HEX);
 
   while (!mqttClient.connected())
   {
     Serial.println("Attempting Connection to HIVEMQ BROKER...");
 
-    while (!mqttClient.connect(CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD))
+    while (!mqttClient.connect(clientID.c_str(), MQTT_USERNAME, MQTT_PASSWORD))
     {
       Serial.println("Connecting...");
       delay(5000);
@@ -175,28 +170,14 @@ void loop()
     Serial.println("Connected!");
 
     mqttClient.publish("returnCode", "Station Online!");
-    // client.subscribe(inTopic);
   }
 
-  Serial.println("Three");
   Watchdog.reset();
   mqttClient.publish("returnCode", String(statusCode));
-  Serial.println(mqttClient.returnCode());
-  Serial.println(mqttClient.lastError());
   Watchdog.reset();
 
-  if (statusCode != 200)
-  {
-    delay(10000);
-  }
-
-  Serial.print("Status code: ");
-  Serial.println(statusCode);
-  Serial.print("Response: ");
-  Serial.println(response);
-
   interruptcounter = 0;
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 11; i++)
   {
     Watchdog.reset();
     delay(5000);
