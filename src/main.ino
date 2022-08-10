@@ -78,11 +78,15 @@ void reconnect()
 
 void setup()
 {
-
-  Serial.println("Reset");
+  delay(1000);
   Watchdog.disable();
 
   Serial.begin(115200);
+  delay(1000);
+
+  Serial.println("");
+  Serial.println("***POTENTIAL WDT RESET***");
+  Serial.println("");
 
   pinMode(interruptPin, INPUT);
   attachInterrupt(digitalPinToInterrupt(interruptPin), cb1, RISING);
