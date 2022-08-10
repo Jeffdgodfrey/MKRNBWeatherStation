@@ -139,7 +139,7 @@ void loop()
   Watchdog.reset();
   sensors_event_t htu_humidity, htu_temp;
   htu.getEvent(&htu_humidity, &htu_temp);
-  String urlRequest = "/measurements/url_create?instrument_id=92&bmp_temp=" + String(bmp.temperature) + "&bmp_pressure=" + String(bmp.pressure / 100) + "&bmp_slp=" + String(SEALEVELPRESSURE_HPA) + "&bmp_altitude=" + String(bmp.readAltitude(SEALEVELPRESSURE_HPA)) + "&bmp_humidity=-999.9" + "&htu21d_temp=" + String(htu_temp.temperature) + "&htu21d_humidity=" + String(htu_humidity.relative_humidity) + "&mcp9808=" + String(mcp.readTempC()) + "&wind_direction=" + String(as5600.readAngle() * AS5600_RAW_TO_DEGREES) + "&wind_speed=" + String(0.0188 * (interruptcounter / 2) + 0.39) + "&key=" + SECRET_KEY;
+  String urlRequest = "/measurements/url_create?instrument_id=92&bmp_temp=" + String(bmp.temperature) + "&bmp_pressure=" + String(bmp.pressure / 100) + "&bmp_slp=" + String(SEALEVELPRESSURE_HPA) + "&bmp_altitude=" + String(bmp.readAltitude(SEALEVELPRESSURE_HPA)) + "&bmp_humidity=-999.9" + "&htu21d_temp=" + String(htu_temp.temperature) + "&htu21d_humidity=" + String(htu_humidity.relative_humidity) + "&mcp9808=" + String(mcp.readTempC()) + "&wind_direction=" + String(as5600.readAngle() * AS5600_RAW_TO_DEGREES) + "&wind_speed=" + String(0.019 * (interruptcounter / 2) + 0.36) + "&key=" + SECRET_KEY;
   Serial.println(urlRequest);
 
   Watchdog.reset();
@@ -168,8 +168,6 @@ void loop()
     }
 
     Serial.println("Connected!");
-
-    mqttClient.publish("returnCode", "Station Online!");
   }
 
   Watchdog.reset();
