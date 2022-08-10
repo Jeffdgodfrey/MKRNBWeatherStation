@@ -125,6 +125,7 @@ void setup()
   }
 
   mqttClient.setCleanSession(true);
+  mqttClient.setTimeout(5000);
   mqttClient.begin(BROKER, MQTT_PORT, client);
 
   Watchdog.enable(8000);
@@ -132,7 +133,27 @@ void setup()
 
 void loop()
 {
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("***MQTT PRE-LOOP CONNECTED***");
+  }
+  else
+  {
+    Serial.println("***MQTT PRE-LOOP DISCONNECTED***");
+  }
+
   mqttClient.loop();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("***MQTT POST-LOOP CONNECTED***");
+  }
+  else
+  {
+    Serial.println("***MQTT POST-LOOP DISCONNECTED***");
+  }
+
   Watchdog.reset();
   delay(200);
   reconnect();
@@ -141,43 +162,280 @@ void loop()
   htu.getEvent(&htu_humidity, &htu_temp);
   String urlRequest = "/measurements/url_create?instrument_id=92&bmp_temp=" + String(bmp.temperature) + "&bmp_pressure=" + String(bmp.pressure / 100) + "&bmp_slp=" + String(SEALEVELPRESSURE_HPA) + "&bmp_altitude=" + String(bmp.readAltitude(SEALEVELPRESSURE_HPA)) + "&bmp_humidity=-999.9" + "&htu21d_temp=" + String(htu_temp.temperature) + "&htu21d_humidity=" + String(htu_humidity.relative_humidity) + "&mcp9808=" + String(mcp.readTempC()) + "&wind_direction=" + String(as5600.readAngle() * AS5600_RAW_TO_DEGREES) + "&wind_speed=" + String(0.019 * (interruptcounter / 2) + 0.36) + "&key=" + SECRET_KEY;
   Serial.println(urlRequest);
+  Watchdog.reset();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-OPEN CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-OPEN DISCONNECTED***");
+    Serial.println("");
+  }
+
+  HttpClient client2 = HttpClient(client, HOST_NAME, HTTP_PORT);
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-OPEN CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-OPEN DISCONNECTED***");
+    Serial.println("");
+  }
+
+  client2.setHttpResponseTimeout(5000);
+  client2.setTimeout(5000);
+  Watchdog.reset();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-GET CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-GET DISCONNECTED***");
+    Serial.println("");
+  }
+
+  client2.get(urlRequest);
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-GET CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-GET DISCONNECTED***");
+    Serial.println("");
+  }
 
   Watchdog.reset();
-  HttpClient client2 = HttpClient(client, HOST_NAME, HTTP_PORT);
-  client2.setHttpResponseTimeout(5000);
-  Watchdog.reset();
-  client2.get(urlRequest);
-  Watchdog.reset();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-RESPONSE-STATUS CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-RESPONSE-STATUS DISCONNECTED***");
+    Serial.println("");
+  }
+
   int statusCode = client2.responseStatusCode();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-RESPONSE-STATUS CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-RESPONSE-STATUS DISCONNECTED***");
+    Serial.println("");
+  }
+
   Watchdog.reset();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-RESPONSE-BODY CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-RESPONSE-BODY DISCONNECTED***");
+    Serial.println("");
+  }
+
   String response = client2.responseBody();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-RESPONSE-BODY CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-RESPONSE-BODY***");
+    Serial.println("");
+  }
+
   Watchdog.reset();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-CLOSE CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP PRE-CLOSE DISCONNECTED***");
+    Serial.println("");
+  }
+
   client2.stop();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-CLOSE CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***HTTP POST-CLOSE DISCONNECTED***");
+    Serial.println("");
+  }
+
   Watchdog.reset();
   String clientID = "MKRNBClient";
   clientID += String(random(0xffff), HEX);
 
   while (!mqttClient.connected())
   {
-    Serial.println("Attempting Connection to HIVEMQ BROKER...");
 
-    while (!mqttClient.connect(clientID.c_str(), MQTT_USERNAME, MQTT_PASSWORD))
+    if (nbAccess.isAccessAlive())
     {
-      Serial.println("Connecting...");
-      delay(5000);
+      Serial.println("");
+      Serial.println("***MQTT PRE-OPEN CONNECTED***");
+      Serial.println("");
+    }
+    else
+    {
+      Serial.println("");
+      Serial.println("***MQTT PRE-OPEN DISCONNECTED***");
+      Serial.println("");
     }
 
-    Serial.println("Connected!");
+    while (!mqttClient.connected())
+    {
+      if (!nbAccess.isAccessAlive())
+      {
+        Serial.println("");
+        Serial.println("***NB Disconnected***");
+        Serial.println("");
+        reconnect();
+      }
+
+      Serial.println("");
+      Serial.println("***CONNECTING TO MQTT BROKER***");
+      Serial.println("");
+
+      if (mqttClient.connect(clientID.c_str(), MQTT_USERNAME, MQTT_PASSWORD))
+      {
+        Serial.println("");
+        Serial.println("***CONNECTED TO MQTT BROKER***");
+        Serial.println("");
+      }
+      else
+      {
+        delay(5000);
+      }
+    }
+
+    if (nbAccess.isAccessAlive())
+    {
+      Serial.println("");
+      Serial.println("***MQTT POST-OPEN CONNECTED***");
+      Serial.println("");
+    }
+    else
+    {
+      Serial.println("");
+      Serial.println("***MQTT POST-OPEN DISCONNECTED***");
+      Serial.println("");
+    }
   }
 
   Watchdog.reset();
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***MQTT PRE-PUBLISH CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***MQTT PRE-PUBLISH DISCONNECTED***");
+    Serial.println("");
+  }
+
   mqttClient.publish("returnCode", String(statusCode));
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***MQTT POST-PUBLISH CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***MQTT POST-PUBLISH DISCONNECTED***");
+    Serial.println("");
+  }
+
   Watchdog.reset();
 
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***WDT PRE-LOOP CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***WDT PRE-LOOP DISCONNECTED***");
+    Serial.println("");
+  }
+
   interruptcounter = 0;
-  for (int i = 0; i < 11; i++)
+  for (int i = 0; i < 55; i++)
   {
     Watchdog.reset();
-    delay(5000);
+    delay(1000);
+  }
+
+  if (nbAccess.isAccessAlive())
+  {
+    Serial.println("");
+    Serial.println("***WDT POST-LOOP CONNECTED***");
+    Serial.println("");
+  }
+  else
+  {
+    Serial.println("");
+    Serial.println("***WDT POST-LOOP DISCONNECTED***");
+    Serial.println("");
   }
 }
