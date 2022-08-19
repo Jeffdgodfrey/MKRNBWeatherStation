@@ -32,7 +32,7 @@ const char MQTT_PASSWORD[] = "";
 
 String URL_REQUEST;
 String URL_REQUEST_ADDRESS = "/measurements/url_create?";
-String INSTRUMENT_ID = "94";
+String INSTRUMENT_ID = "93";
 String BMP390_TEMP;
 String BMP390_PRESSURE;
 String BMP390_ALTITUDE;
@@ -220,10 +220,9 @@ void loop()
   RAIN_COUNTER = 0;
   WIND_COUNTER = 0;
 
-  httpClient.stop();
-
   while ((millis() - lastMillis) < 60000)
     delay(500);
 
+  httpClient.stop();
   lastMillis = 0;
 }
