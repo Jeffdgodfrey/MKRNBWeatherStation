@@ -32,7 +32,7 @@ const char MQTT_PASSWORD[] = "";
 
 String URL_REQUEST;
 String URL_REQUEST_ADDRESS = "/measurements/url_create?";
-String INSTRUMENT_ID = "93";
+String INSTRUMENT_ID = "94";
 String BMP390_TEMP;
 String BMP390_PRESSURE;
 String BMP390_ALTITUDE;
@@ -52,6 +52,8 @@ const int RAIN_PIN = 4;
 const int ANEMOMETER_PIN = 5;
 int HTTP_PORT = 80;
 int MQTT_PORT = 1883;
+
+unsigned long lastMillis = 0;
 
 sensors_event_t htu_humidity, htu_temp;
 
@@ -185,6 +187,9 @@ void setup()
 
 void loop()
 {
+
+  lastMillis = millis();
+
   if (nbAccess.ready() != 1 || nbAccess.status() != 3 || nbAccess.getLocalTime() == 0)
     NBConnect();
 
@@ -214,7 +219,11 @@ void loop()
 
   RAIN_COUNTER = 0;
   WIND_COUNTER = 0;
-  delay(60000);
 
   httpClient.stop();
+
+  while ((millis() - lastMillis) < 60000)
+    delay(500);
+
+  lastMillis = 0;
 }
