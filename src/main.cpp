@@ -133,8 +133,9 @@ void I2CSensorInitialize()
 
 void GetI2CSensorData()
 {
-  BMP390_TEMP = String(float(bmp.temperature));
-  BMP390_PRESSURE = String(float(bmp.pressure / 100));
+  bmp.readTemperature();
+  BMP390_TEMP = String(float(bmp.readTemperature()));
+  BMP390_PRESSURE = String(float(bmp.readPressure() / 100));
   BMP390_ALTITUDE = String(float(bmp.readAltitude(SEA_LEVEL_PRESSURE)));
 
   htu.getEvent(&htu_humidity, &htu_temp);
@@ -142,8 +143,6 @@ void GetI2CSensorData()
   HTU31D_TEMP = String(float(htu_temp.temperature));
 
   MCP9808_TEMP = String(float(mcp.readTempC()));
-
-  // WIND_DIRECTION = String(windVane.readAngle() * AS5600_RAW_TO_DEGREES);
 }
 
 void GetWindDirectionData()
@@ -187,14 +186,13 @@ void setup()
   pinMode(RAIN_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(RAIN_PIN), RainInterrupt, RISING);
 
-  NBConnect();
+  analogReadResolution(12);
 
-  windVane.setOutputMode(0);
+  NBConnect();
 }
 
 void loop()
 {
-
   lastMillis = millis();
 
   if (nbAccess.ready() != 1 || nbAccess.status() != 3 || nbAccess.getLocalTime() == 0)
@@ -204,10 +202,15 @@ void loop()
   GetI2CSensorData();
   GetWindSpeedData();
   GetRainData();
-  CreateUrlRequest();
   GetWindDirectionData();
+  CreateUrlRequest();
 
-  Serial.println(RAIN_COUNTER);
+  Serial.print("BMP390: ");
+  Serial.println(BMP390_TEMP);
+  Serial.print("MCP: ");
+  Serial.println(MCP9808_TEMP);
+  Serial.print("HTU: ");
+  Serial.println(HTU31D_TEMP);
 
   HttpClient httpClient = HttpClient(nbClient, HTTP_HOST_NAME, HTTP_PORT);
 
@@ -224,6 +227,7 @@ void loop()
   Serial.println(HTTP_STATUS_CODE);
 
   httpClient.flush();
+  nbClient.flush();
 
   RAIN_COUNTER = 0;
   WIND_COUNTER = 0;
@@ -231,6 +235,7 @@ void loop()
   while ((millis() - lastMillis) < 60000)
     delay(500);
 
-  httpClient.stop();
   lastMillis = 0;
+
+  httpClient.stop();
 }
