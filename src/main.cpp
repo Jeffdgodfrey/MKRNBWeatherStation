@@ -16,7 +16,7 @@
   =============================================
 */
 
-#define SEA_LEVEL_PRESSURE (1013.25)
+//#define SEA_LEVEL_PRESSURE (1013.25)
 /*
   =============================================
   VARIABLES
@@ -45,6 +45,7 @@ String RAIN_AMOUNT;
 String HTTP_RESPONSE;
 String HTTP_STATUS_CODE;
 
+float SEA_LEVEL_PRESSURE;
 volatile float RAIN_COUNTER = 0.0;
 volatile float WIND_COUNTER = 0.0;
 const float RAIN_CALIBRATION = 0.19;
@@ -134,9 +135,10 @@ void I2CSensorInitialize()
 void GetI2CSensorData()
 {
   bmp.readTemperature();
-  BMP390_TEMP = String(float(bmp.readTemperature()));
-  BMP390_PRESSURE = String(float(bmp.readPressure() / 100));
-  BMP390_ALTITUDE = String(float(bmp.readAltitude(SEA_LEVEL_PRESSURE)));
+  BMP390_TEMP = String(bmp.readTemperature());
+  BMP390_PRESSURE = String(bmp.readPressure() / 100);
+  SEA_LEVEL_PRESSURE = ((bmp.readPressure() / 100) * exp(556 / (29.3 * (bmp.readTemperature() + 273.15))));
+  BMP390_ALTITUDE = String(bmp.readAltitude(SEA_LEVEL_PRESSURE));
 
   htu.getEvent(&htu_humidity, &htu_temp);
   HTU31D_HUMIDITY = String(float(htu_humidity.relative_humidity));
