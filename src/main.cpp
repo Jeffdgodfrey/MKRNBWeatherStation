@@ -133,17 +133,22 @@ void I2CSensorInitialize()
 
 void GetI2CSensorData()
 {
-  BMP390_TEMP = String(bmp.temperature);
-  BMP390_PRESSURE = String(bmp.pressure / 100);
-  BMP390_ALTITUDE = String(bmp.readAltitude(SEA_LEVEL_PRESSURE));
+  BMP390_TEMP = String(float(bmp.temperature));
+  BMP390_PRESSURE = String(float(bmp.pressure / 100));
+  BMP390_ALTITUDE = String(float(bmp.readAltitude(SEA_LEVEL_PRESSURE)));
 
   htu.getEvent(&htu_humidity, &htu_temp);
-  HTU31D_HUMIDITY = String(htu_humidity.relative_humidity);
-  HTU31D_TEMP = String(htu_temp.temperature);
+  HTU31D_HUMIDITY = String(float(htu_humidity.relative_humidity));
+  HTU31D_TEMP = String(float(htu_temp.temperature));
 
-  MCP9808_TEMP = String(mcp.readTempC());
+  MCP9808_TEMP = String(float(mcp.readTempC()));
 
   // WIND_DIRECTION = String(windVane.readAngle() * AS5600_RAW_TO_DEGREES);
+}
+
+void GetWindDirectionData()
+{
+  WIND_DIRECTION = String(float(analogRead(A0) * 0.08789));
 }
 
 void GetWindSpeedData()
@@ -158,7 +163,7 @@ void GetRainData()
 
 void CreateUrlRequest()
 {
-  URL_REQUEST = URL_REQUEST_ADDRESS + "instrument_id=" + INSTRUMENT_ID + "&bmp_temp=" + BMP390_TEMP + "&bmp_pressure=" + BMP390_PRESSURE + "&bmp_slp=" + String(SEA_LEVEL_PRESSURE) + "&bmp_altitude=" + BMP390_ALTITUDE + "&htu21d_temp=" + HTU31D_TEMP + "&htu21d_humidity=" + HTU31D_HUMIDITY + "&mcp9808=" + MCP9808_TEMP + /* "&wind_direction=" + WIND_DIRECTION + */ "&wind_speed=" + WIND_SPEED + "&rain=" + RAIN_AMOUNT + "&key=" + SECRET_KEY;
+  URL_REQUEST = URL_REQUEST_ADDRESS + "instrument_id=" + INSTRUMENT_ID + "&bmp_temp=" + BMP390_TEMP + "&bmp_pressure=" + BMP390_PRESSURE + "&bmp_slp=" + String(SEA_LEVEL_PRESSURE) + "&bmp_altitude=" + BMP390_ALTITUDE + "&htu21d_temp=" + HTU31D_TEMP + "&htu21d_humidity=" + HTU31D_HUMIDITY + "&mcp9808=" + MCP9808_TEMP + "&wind_direction=" + WIND_DIRECTION + "&wind_speed=" + WIND_SPEED + "&rain=" + RAIN_AMOUNT + "&key=" + SECRET_KEY;
 }
 
 /*
@@ -183,6 +188,8 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(RAIN_PIN), RainInterrupt, RISING);
 
   NBConnect();
+
+  windVane.setOutputMode(0);
 }
 
 void loop()
@@ -198,6 +205,7 @@ void loop()
   GetWindSpeedData();
   GetRainData();
   CreateUrlRequest();
+  GetWindDirectionData();
 
   Serial.println(RAIN_COUNTER);
 
