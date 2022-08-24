@@ -12,13 +12,6 @@
 
 /*
   =============================================
-  DEFINITIONS
-  =============================================
-*/
-
-#define SEA_LEVEL_PRESSURE (1013.25)
-/*
-  =============================================
   VARIABLES
   =============================================
 */
@@ -48,11 +41,12 @@ String HTTP_STATUS_CODE;
 volatile float RAIN_COUNTER = 0.0;
 volatile float WIND_COUNTER = 0.0;
 const float RAIN_CALIBRATION = 0.19;
+float SEA_LEVEL_PRESSURE;
+
 const int RAIN_PIN = 4;
 const int ANEMOMETER_PIN = 5;
 int HTTP_PORT = 80;
 int MQTT_PORT = 1883;
-
 unsigned long lastMillis = 0;
 
 sensors_event_t htu_humidity, htu_temp;
@@ -133,7 +127,9 @@ void I2CSensorInitialize()
 
 void GetI2CSensorData()
 {
-  bmp.readTemperature();
+  SEA_LEVEL_PRESSURE = ((bmp.readPressure() / 100) * exp(556 / (29.3 * (bmp.readTemperature() + 273.15))));
+  Serial.print("SLP: ");
+  Serial.println(SEA_LEVEL_PRESSURE);
   BMP390_TEMP = String(float(bmp.readTemperature()));
   BMP390_PRESSURE = String(float(bmp.readPressure() / 100));
   BMP390_ALTITUDE = String(float(bmp.readAltitude(SEA_LEVEL_PRESSURE)));
@@ -176,7 +172,7 @@ void setup()
   // Initialize serial output
   delay(500);
   Serial.begin(115200);
-  delay(500);
+  delay(25000);
 
   // Attach interrupt to anemometer
   pinMode(ANEMOMETER_PIN, INPUT);
@@ -233,9 +229,25 @@ void loop()
   WIND_COUNTER = 0;
 
   while ((millis() - lastMillis) < 60000)
-    delay(500);
+    ;
 
   lastMillis = 0;
 
-  httpClient.stop();
+  if (httpClient.available())
+  {
+    Serial.print("HTTP Client Read: ");
+    Serial.println((char)httpClient.read());
+  }
+
+  if (nbClient.available())
+  {
+    Serial.print("NB Client Read: ");
+    Serial.println((char)nbClient.read());
+  }
+
+  if (!httpClient.available() && !httpClient.connected())
+    httpClient.stop();
+
+  if (!nbClient.available() && !nbClient.connected())
+    nbClient.stop();
 }
