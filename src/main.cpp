@@ -1,3 +1,39 @@
+/*
+  Changed line 141 of NBClient.cpp from "MODEM.send("AT+USECPRF=0,0,1");"
+  to "MODEM.send("AT+USECPRF=0,0,0");"
+*/
+
+/*
+  Changed line 506 of NBClient.cpp from "MODEM.waitForResponse(10000);"
+  to "MODEM.waitForResponse(120000);"
+*/
+
+/*
+  Changed line 197 of NBClient.cpp from "MODEM.sendf("AT+USOCL=%d", _socket);"
+  to MODEM.sendf("AT+USOCL=%d,1", _socket);
+*/
+
+/*
+  Changed line 332 of NBClient.cpp from "command.reserve(19 + (size > 256 ? 256 : size) * 2);"
+  to "command.reserve(19 + (size > 512 ? 512 : size) * 2);"
+*/
+
+/*
+  Changed lines 338-340 of NBClient.cpp from
+  "if (chunkSize > 256)
+    {
+      chunkSize = 256;"
+  to
+  "if (chunkSize > 512)
+    {
+      chunkSize = 512;"
+*/
+
+/*
+  Changed line 505 of NBClient.cpp from "MODEM.sendf("AT+USOCL=%d", _socket);"
+  to "MODEM.sendf("AT+USOCL=%d,1", _socket);"
+*/
+
 #include <Arduino.h>
 #include <MKRNB.h>
 #include <Adafruit_BMP3XX.h>
@@ -25,7 +61,7 @@ const char MQTT_PASSWORD[] = "";
 
 String URL_REQUEST;
 String URL_REQUEST_ADDRESS = "/measurements/url_create?";
-String INSTRUMENT_ID = "93";
+String INSTRUMENT_ID = "94";
 String BMP390_TEMP;
 String BMP390_PRESSURE;
 String BMP390_ALTITUDE;
@@ -192,7 +228,10 @@ void loop()
   lastMillis = millis();
 
   if (nbAccess.ready() != 1 || nbAccess.status() != 3 || nbAccess.getLocalTime() == 0)
+  {
     NBConnect();
+    Serial.println("NB Reconnected");
+  }
 
   I2CSensorInitialize();
   GetI2CSensorData();
@@ -209,7 +248,6 @@ void loop()
   Serial.println(HTU31D_TEMP);
 
   HttpClient httpClient = HttpClient(nbClient, HTTP_HOST_NAME, HTTP_PORT);
-
   Serial.println(URL_REQUEST);
   httpClient.get(String(URL_REQUEST));
 
@@ -221,9 +259,6 @@ void loop()
 
   Serial.print("HTTP Status Code: ");
   Serial.println(HTTP_STATUS_CODE);
-
-  httpClient.flush();
-  nbClient.flush();
 
   RAIN_COUNTER = 0;
   WIND_COUNTER = 0;
@@ -246,8 +281,8 @@ void loop()
   }
 
   if (!httpClient.available() && !httpClient.connected())
+  {
     httpClient.stop();
-
-  if (!nbClient.available() && !nbClient.connected())
-    nbClient.stop();
+    Serial.println("HTTP Client Stopped");
+  }
 }
