@@ -1,2 +1,0 @@
-#define SECRET_PINNUMBER ""
-#define SECRET_KEY "21DE6A8A"
