@@ -34,6 +34,76 @@
   to "MODEM.sendf("AT+USOCL=%d,1", _socket);"
 */
 
+/*
+  Changed lines 48-50 of NB.h from:
+    NB_NetworkStatus_t begin(const char* pin = 0, bool restart = true, bool synchronous = true);
+    NB_NetworkStatus_t begin(const char* pin, const char* apn, bool restart = true, bool synchronous = true);
+    NB_NetworkStatus_t begin(const char* pin, const char* apn, const char* username, const char* password, bool restart = true, bool synchronous = true);
+  to:
+    NB_NetworkStatus_t begin(const char* pin = 0, bool restart = false, bool synchronous = true);
+    NB_NetworkStatus_t begin(const char* pin, const char* apn, bool restart = false, bool synchronous = true);
+    NB_NetworkStatus_t begin(const char* pin, const char* apn, const char* username, const char* password, bool restart = false, bool synchronous = true);
+*/
+
+/*
+  Moved lines 64-67:
+    if (restart) {
+    shutdown();
+    end();
+    }
+  to after the code:
+     // power on module
+    if (!isPowerOn()) {
+      digitalWrite(_powerOnPin, HIGH);
+      delay(150); // Datasheet says power-on pulse should be >=150ms, <=3200ms
+      digitalWrite(_powerOnPin, LOW);
+      setVIntPin(SARA_VINT_ON);
+    } else {
+      if (!autosense()) {
+        return 0;
+      }
+    }
+*/
+
+/*
+  Changed line 370 of HttpClient.h from:
+    "static const int kHttpResponseTimeout = 30*1000;"
+  to:
+    "static const int kHttpResponseTimeout = 300*1000;"
+*/
+
+/*
+  Changed line 366 of HttpClient.h from:
+    static const int kHttpWaitForDataDelay = 1000;
+  to:
+    static const int kHttpWaitForDataDelay = 30;
+*/
+
+/*
+  Added the following to end of HttpClient.cpp:
+  int HttpClient::connect(IPAddress ip, uint16_t port) {
+    this->iServerName = NULL;
+    this->iServerAddress = ip;
+    this-> iServerPort = port;
+    return iClient->connect(ip, port);
+  };
+  int HttpClient::connect(const char *host, uint16_t port) {
+    this->iServerName = host;
+    this->iServerAddress = IPAddress();
+    this-> iServerPort = port;
+    return iClient->connect(host, port);
+  };
+*/
+
+/*
+  Changed lines 335-336 of HttpClient.h from:
+    virtual int connect(IPAddress ip, uint16_t port) { return iClient->connect(ip, port); };
+    virtual int connect(const char *host, uint16_t port) { return iClient->connect(host, port); };
+  to:
+    virtual int connect(IPAddress ip, uint16_t port);
+    virtual int connect(const char *host, uint16_t port);
+*/
+
 #include <Arduino.h>
 #include <MKRNB.h>
 #include <Adafruit_BMP3XX.h>
@@ -54,14 +124,10 @@
 
 const char NB_PINNUMBER[] = "";
 const char HTTP_HOST_NAME[] = "3d.chordsrt.com";
-const char MQTT_BROKER[] = "broker.hivemq.com";
-const char MQTT_TOPIC[] = "httpStatusCode";
-const char MQTT_USERNAME[] = "";
-const char MQTT_PASSWORD[] = "";
 
 String URL_REQUEST;
 String URL_REQUEST_ADDRESS = "/measurements/url_create?";
-String INSTRUMENT_ID = "94";
+String INSTRUMENT_ID = "95";
 String BMP390_TEMP;
 String BMP390_PRESSURE;
 String BMP390_ALTITUDE;
@@ -73,6 +139,7 @@ String WIND_SPEED;
 String RAIN_AMOUNT;
 String HTTP_RESPONSE;
 String HTTP_STATUS_CODE;
+String *MODEM_RESPONSE_STORAGE;
 
 volatile float RAIN_COUNTER = 0.0;
 volatile float WIND_COUNTER = 0.0;
@@ -82,8 +149,8 @@ float SEA_LEVEL_PRESSURE;
 const int RAIN_PIN = 4;
 const int ANEMOMETER_PIN = 5;
 int HTTP_PORT = 80;
-int MQTT_PORT = 1883;
 unsigned long lastMillis = 0;
+int READ_COUNTER = 0;
 
 sensors_event_t htu_humidity, htu_temp;
 
@@ -101,6 +168,7 @@ AS5600 windVane;
 NBClient nbClient;
 GPRS gprs;
 NB nbAccess(true);
+NBModem nbModem;
 
 /*
   ==============================================
@@ -122,16 +190,21 @@ void RainInterrupt()
 
 void NBConnect()
 {
-
-  while (nbAccess.ready() != 1 || nbAccess.status() != 3 || nbAccess.getLocalTime() == 0)
+  while (nbAccess.isAccessAlive() == 0)
   {
+    MODEM.begin(true); // restarts the modem.
+    delay(1000);
+    MODEM.sendf("AT+COPS=0"); // force into automatic mode
+
     if ((nbAccess.begin(NB_PINNUMBER) == NB_READY) && (gprs.attachGPRS() == GPRS_READY))
     {
-      Serial.println("Connected to NB network");
+      Serial.println("Connecting!");
     }
     else
-      Serial.println("Connection to NB network failed");
-    delay(2000);
+    {
+      Serial.println("Not connected");
+      MODEM.waitForResponse(2000);
+    }
   }
 }
 
@@ -220,18 +293,44 @@ void setup()
 
   analogReadResolution(12);
 
-  NBConnect();
+  boolean connected = false;
+
+  while (!connected)
+  {
+    if ((nbAccess.begin(NB_PINNUMBER) == NB_READY) &&
+        (gprs.attachGPRS() == GPRS_READY))
+    {
+      connected = true;
+      Serial.println("Connected!");
+    }
+    else
+    {
+      Serial.println("Not connected");
+      MODEM.sendf("AT+COPS=0"); // force into automatic mode
+      delay(1000);
+    }
+  }
+
+  delay(500);
+
+  MODEM.sendf("AT+UDCONF=1,1");
+
+  delay(500);
 }
 
 void loop()
 {
   lastMillis = millis();
 
-  if (nbAccess.ready() != 1 || nbAccess.status() != 3 || nbAccess.getLocalTime() == 0)
+  Serial.println("Made it here");
+
+  if (nbAccess.isAccessAlive() == 0)
   {
     NBConnect();
     Serial.println("NB Reconnected");
   }
+
+  // MODEM.setResponseDataStorage(MODEM_RESPONSE_STORAGE);
 
   I2CSensorInitialize();
   GetI2CSensorData();
@@ -251,38 +350,36 @@ void loop()
   Serial.println(URL_REQUEST);
   httpClient.get(String(URL_REQUEST));
 
-  HTTP_STATUS_CODE = httpClient.responseStatusCode();
-  HTTP_RESPONSE = httpClient.responseBody();
+  delay(1000);
 
-  Serial.print("HTTP Response: ");
-  Serial.println(HTTP_RESPONSE);
+  // Serial.println(*MODEM_RESPONSE_STORAGE);
 
-  Serial.print("HTTP Status Code: ");
-  Serial.println(HTTP_STATUS_CODE);
+  while (httpClient.available())
+  {
+    httpClient.read();
+    Serial.println("HTTP Read");
+    READ_COUNTER++;
+    Serial.println(READ_COUNTER);
+    delay(10);
+  }
 
+  while (nbClient.available())
+  {
+    nbClient.read();
+    Serial.println("NB Read");
+  }
+
+  Serial.println(READ_COUNTER);
+  READ_COUNTER = 0;
   RAIN_COUNTER = 0;
   WIND_COUNTER = 0;
 
-  while ((millis() - lastMillis) < 60000)
+  while ((millis() - lastMillis) < 59500)
     ;
 
+  delay(500);
+
+  httpClient.stop();
+
   lastMillis = 0;
-
-  if (httpClient.available())
-  {
-    Serial.print("HTTP Client Read: ");
-    Serial.println((char)httpClient.read());
-  }
-
-  if (nbClient.available())
-  {
-    Serial.print("NB Client Read: ");
-    Serial.println((char)nbClient.read());
-  }
-
-  if (!httpClient.available() && !httpClient.connected())
-  {
-    httpClient.stop();
-    Serial.println("HTTP Client Stopped");
-  }
 }
