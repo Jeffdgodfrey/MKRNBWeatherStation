@@ -151,6 +151,7 @@ const int ANEMOMETER_PIN = 5;
 int HTTP_PORT = 80;
 unsigned long lastMillis = 0;
 int READ_COUNTER = 0;
+int HTTP_RESPONSE_TIMEOUT;
 
 sensors_event_t htu_humidity, htu_temp;
 
@@ -316,6 +317,8 @@ void setup()
   MODEM.sendf("AT+UDCONF=1,1");
 
   delay(500);
+
+  nbAccess.setTimeout(30000);
 }
 
 void loop()
@@ -339,45 +342,44 @@ void loop()
   GetWindDirectionData();
   CreateUrlRequest();
 
-  Serial.print("BMP390: ");
-  Serial.println(BMP390_TEMP);
-  Serial.print("MCP: ");
-  Serial.println(MCP9808_TEMP);
-  Serial.print("HTU: ");
-  Serial.println(HTU31D_TEMP);
-
   HttpClient httpClient = HttpClient(nbClient, HTTP_HOST_NAME, HTTP_PORT);
   Serial.println(URL_REQUEST);
   httpClient.get(String(URL_REQUEST));
 
-  delay(1000);
-
   // Serial.println(*MODEM_RESPONSE_STORAGE);
+
+  HTTP_RESPONSE_TIMEOUT = 0;
+
+  while (!httpClient.available())
+  {
+    if (HTTP_RESPONSE_TIMEOUT >= 3600)
+    {
+      Serial.println("HTTP Response Timed Out");
+      break;
+    }
+    else
+      HTTP_RESPONSE_TIMEOUT++;
+
+    delay(100);
+  }
 
   while (httpClient.available())
   {
     httpClient.read();
-    Serial.println("HTTP Read");
     READ_COUNTER++;
-    Serial.println(READ_COUNTER);
     delay(10);
   }
 
-  while (nbClient.available())
-  {
-    nbClient.read();
-    Serial.println("NB Read");
-  }
+  Serial.print("Read ");
+  Serial.print(READ_COUNTER);
+  Serial.println(" bytes from HTTP Client");
 
-  Serial.println(READ_COUNTER);
   READ_COUNTER = 0;
   RAIN_COUNTER = 0;
   WIND_COUNTER = 0;
 
-  while ((millis() - lastMillis) < 59500)
+  while ((millis() - lastMillis) < 60000)
     ;
-
-  delay(500);
 
   httpClient.stop();
 
